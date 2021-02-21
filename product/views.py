@@ -24,46 +24,69 @@ class ProductDetailView(View):
         if not Product.objects.filter(id=product_id).exists():
             return JsonResponse({'message': 'DOES_NOT_EXIST'}, status=404)
 
-        product = Product.objects.get(id=product_id)
+        product  = Product.objects.get(id=product_id)
+        category = product.category.menu.name
+
+        # is_vegan, is_vegeterian
+        vegan_level = product.vegan_level_id
+        if vegan_level == 1:
+            is_vegan      = True
+            is_vegeterian = False
+        elif vegan_level == 2:
+            is_vegan      = False
+            is_vegeterian = True
+        else:
+            is_vegan      = False
+            is_vegeterian = False
+
+        # size, price
+        product_SSPs = ProductStock.objects.filter(product=product)  # SSP: size, stock, price
+
+        if category == 'vitamins':
+            price      = product_SSPs[0].price   
+            is_soldout = True if product_SSPs[0].stock == 0 else False 
+        else:
+            price = {
+                product_SSPs[0].size : product_SSPs[0].price,
+                product_SSPs[1].size : product_SSPs[1].price
+            }
+            is_soldout = {
+                product_SSPs[0].size : True if product_SSPs[0].stock == 0 else False,
+                product_SSPs[1].size : True if product_SSPs[1].stock == 0 else False,
+            }
+        
+        # similar products
+        similar_product_list = []
+        goals_product        = product.goal.all()
+        for goal_product in goals_product:
+            similar_products = goal_product.product_set.exclude(id=product_id)
+
+            for similar_product in similar_products:
+                similar_product_info = {
+                        'id'             : similar_product.id,
+                        'title'          : similar_product.name,
+                        'subTitle'       : similar_product.sub_name,
+                        'imageUrl'       : similar_product.image_set.get(is_main=True).image_url,
+                        'healthGoalList' : [goal.name for goal in similar_product.goal.all()]
+                }
+                similar_product_list.append(similar_product_info)
+        
         context = {}
-        
-        # goals & similar_products
-        goals = product.goal.all()
-        goal_list = []
-        
-        if goals:
-            for goal in goals:
-                goal_list.append(goal.name)
+        context['category']            = category 
+        context['productImageSrc']     = product.image_set.get(is_main=False).image_url
+        context['productCardImageSrc'] = product.image_set.get(is_main=True).image_url
+        context['isVegan']             = is_vegan
+        context['isVegetarian']        = is_vegeterian
+        context['healthGoalList']      = [goal.name for goal in product.goal.all()]
+        context['title']               = product.name
+        context['subTitle']            = product.sub_name
+        context['description']         = product.description
+        context['nutritionLink']       = product.nutrition_url
+        context['allergyList']         = [allergy.name for allergy in product.allergy.all()]
+        context['productPrice']        = price
+        context['isSoldOut']           = is_soldout
+        context['dietaryHabitList']    = [dietary_habit.name for dietary_habit in product.dietary_habit.all()]
+        context['similarProduct']      = similar_product_list[:2] 
 
-                # similar_products
-                similar_products = goal.product_set.all()
-            context['goal'] = goal_list
-
-            
-
-
-        # product
-        context['id'] = product.id
-        context['displayTitle'] = product.name
-        context['subtitle'] = product.sub_name
-        context['description'] = product.description
-        context['nutritionUrl'] = product.nutrition_url
-        context['isNew'] = product.is_new
-        context['veganLevel'] = product.vegan_level  # 1: vegan 2: vegetarian 3: non-vegetarian
+        return JsonResponse({"data": context, "message": "SUCCESS"}, status=200)
         
-        # dietary_habits
-        dietary_habits = product.dietary_habit.all()
-        #dietary_habit_list = []
-        if dietary_habits:
-            dietary_habit_list = [dietary_habit.name for dietary_habit in dietary_habits]
-            context['dietaryHabit'] = dietary_habit_list
-        
-        # allergies
-        allergies = product.allergy.all()
-        if allergies:
-            allergy_list = [allergy.name for allergy in allergies]
-            context['allergy'] = allergy_list
-        
-        # similar_products
-        
-
