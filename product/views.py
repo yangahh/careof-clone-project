@@ -21,11 +21,13 @@ from .models import (
 
 class ProductDetailView(View):
     def get(self, request, product_id):
+
         if not Product.objects.filter(id=product_id).exists():
             return JsonResponse({'message': 'DOES_NOT_EXIST'}, status=404)
 
         product  = Product.objects.get(id=product_id)
         category = product.category.menu.name
+        print(category)
 
         # is_vegan, is_vegeterian
         vegan_level = product.vegan_level_id
@@ -41,7 +43,6 @@ class ProductDetailView(View):
 
         # size, price
         product_SSPs = ProductStock.objects.filter(product=product)  # SSP: size, stock, price
-
         if category == 'vitamins':
             price      = product_SSPs[0].price   
             is_soldout = True if product_SSPs[0].stock == 0 else False 
