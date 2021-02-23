@@ -12,8 +12,11 @@ class User(models.Model):
         db_table = 'users'
 
 class Address(models.Model):
-    user    = models.ForeignKey('User', on_delete = models.CASCADE)
-    address = models.CharField(max_length=200)
+    user     = models.ForeignKey('User', on_delete = models.CASCADE)
+    address  = models.CharField(max_length=200)
+    zip_code = models.CharField(max_length=20)
+    is_main  = models.BooleanField(default=True)
+    order    = models.OneToOneField('order.Order', on_delete=models.CASCADE, null=True)
 
     class Meta:
         db_table = 'addresses'
